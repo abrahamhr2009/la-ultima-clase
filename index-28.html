@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#050609">
+<title>LA ÚLTIMA CLASE — Horror 3D</title>
+<style>
+:root{--red:#b51f2b;--white:#e9e9e9}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050609;color:var(--white);font-family:Arial, sans-serif;touch-action:none}
+#game{position:fixed;inset:0}canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;inset:0;pointer-events:none}
+#top{position:absolute;top:env(safe-area-inset-top,10px);left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;text-shadow:0 2px 5px #000;font-size:13px}
+.panel{background:#050609a8;border:1px solid #ffffff20;border-radius:9px;padding:9px 11px;backdrop-filter:blur(4px)}
+#keys{letter-spacing:2px;color:#f1c66d;font-weight:bold}#hint{position:absolute;top:18%;left:50%;transform:translateX(-50%);max-width:85%;text-align:center;background:#000b;padding:9px 13px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s}
+#cross{position:absolute;left:50%;top:50%;width:7px;height:7px;border:1px solid #ffffff90;border-radius:50%;transform:translate(-50%,-50%)}
+#controls{position:absolute;inset:auto 0 0;height:42%;pointer-events:none;padding:clamp(10px,2vw,24px);}
+#stickArea{position:absolute;left:max(14px,env(safe-area-inset-left));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 12px);width:clamp(104px,16vw,144px);height:clamp(104px,16vw,144px);border-radius:50%;background:#ffffff12;border:1px solid #ffffff45;pointer-events:auto;touch-action:none;}
+#stick{position:absolute;left:50%;top:50%;width:clamp(44px,6vw,58px);height:clamp(44px,6vw,58px);transform:translate(-50%,-50%);border-radius:50%;background:#ffffff50;border:1px solid #ffffffa0;}
+.btn{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 12px);width:clamp(54px,8vw,72px);height:clamp(54px,8vw,72px);border-radius:50%;border:1px solid #ffffff90;background:#111e;color:white;font-weight:bold;font-size:clamp(11px,1.6vw,14px);pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;}
+#use{right:calc(max(14px,env(safe-area-inset-right)) + clamp(68px,10vw,88px));bottom:calc(max(14px,env(safe-area-inset-bottom)) + clamp(82px,12vw,104px));width:clamp(54px,7vw,66px);height:clamp(54px,7vw,66px);font-size:clamp(10px,1.5vw,13px)}
+#flash{right:max(14px,env(safe-area-inset-right));bottom:calc(max(14px,env(safe-area-inset-bottom)) + clamp(82px,12vw,104px))}
+#run{right:max(14px,env(safe-area-inset-right));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 12px)}
+#screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse,#17191d 0%,#030405 75%);z-index:5;padding:22px;text-align:center}
+.card{max-width:480px;width:100%;background:#090b0eea;border:1px solid #ffffff25;border-radius:15px;padding:25px;box-shadow:0 20px 80px #000}
+h1{font-size:clamp(30px,8vw,54px);letter-spacing:3px;color:#c52d38;margin:0 0 10px}
+p{line-height:1.5;color:#c7c7c7;font-size:14px}
+.mainbtn{border:0;background:#a51e29;color:white;border-radius:8px;padding:14px 25px;font-weight:bold;font-size:15px;margin-top:10px}
+#endingImg{display:none;width:min(100%,300px);max-height:35vh;object-fit:contain;margin:12px auto;border-radius:8px}
+#objectPopup{display:none;position:fixed;z-index:4;inset:0;background:#000d;align-items:center;justify-content:center;padding:25px;text-align:center}
+#objectPopup .card{max-width:320px}
+#objectImg{width:100%;max-height:220px;object-fit:contain}
+@media (min-width:800px){#controls{height:36%}#stickArea{opacity:.72}}
+@media (max-height:500px){#controls{height:58%}#stickArea{width:96px;height:96px}#stick{width:42px;height:42px}#use,#flash{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 66px)}}
+@media (pointer:fine){.btn,#stickArea{opacity:.72}.btn:hover{opacity:1;background:#6e2029}}
+button{cursor:pointer}
+
+#cinematic{display:none;position:fixed;inset:0;z-index:20;background:#000;align-items:center;justify-content:center;flex-direction:column;padding:12px}
+#cinematic video{width:100%;height:100%;max-width:1200px;max-height:calc(100% - 58px);object-fit:contain;background:#000}
+#cinematic .skip{position:absolute;right:18px;top:18px;z-index:2;background:#171717dd;color:#fff;border:1px solid #ffffff55;border-radius:8px;padding:10px 14px}
+#cinematic .cinemaLabel{color:#ddd;font-size:12px;margin-top:8px}
+#objectPopup .mainbtn{margin:6px}
+@media(max-width:600px){#cinematic{padding:0}#cinematic video{max-height:100%;}#cinematic .skip{top:env(safe-area-inset-top,12px)}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+ <div id="top"><div class="panel">LA ÚLTIMA CLASE<br><small id="status">Encuentra las 3 llaves</small></div><div class="panel">LLAVES: <span id="keys">0 / 3</span></div></div>
+ <div id="hint"></div><div id="cross"></div>
+ <div id="controls">
+  <div id="stickArea"><div id="stick"></div></div>
+  <button class="btn" id="use">USAR</button>
+  <button class="btn" id="flash">🔦</button>
+  <button class="btn" id="run">CORRER</button>
+ </div>
+</div>
+<audio id="bgAudio" src="audio/musica_fondo.mp3" loop preload="none"></audio>
+<audio id="scareAudio" src="audio/susto.mp3" preload="none"></audio>
+<audio id="footAudio" src="audio/pasos.mp3" preload="none"></audio>
+<audio id="keyAudio" src="audio/recoger_llave.mp3" preload="none"></audio>
+<audio id="doorAudio" src="audio/puerta.mp3" preload="none"></audio>
+<audio id="objectAudio" src="audio/easter_egg.mp3" preload="none"></audio>
+<div id="cinematic"><button class="skip" id="skipVideo">SALTAR VIDEO</button><video id="cinemaVideo" playsinline webkit-playsinline preload="auto"></video><div class="cinemaLabel" id="cinemaLabel">REPRODUCIENDO CINEMÁTICA</div></div>
+<div id="objectPopup"><div class="card"><h2>EL OBJETO</h2><img id="objectImg" src="assets/objeto.png" onerror="this.style.display='none'"><p id="objectText">Parece que alguien dejó esto aquí...</p><button class="mainbtn" id="playSecret">VER EASTER EGG</button><button class="mainbtn" id="closeObject">CERRAR</button></div></div>
+<div id="screen"><div class="card"><h1>LA ÚLTIMA<br>CLASE</h1><p>La escuela está vacía. Encuentra las tres llaves y llega a la salida. No dejes que te encuentre.</p><p><b>Controles:</b> mueve el joystick, usa 🔦 para la linterna y toca USAR cerca de objetos.</p><button class="mainbtn" id="start">ENTRAR A LA ESCUELA</button><p style="font-size:11px">Experiencia 3D ligera · recomendado activar pantalla completa</p></div></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const screen=$('screen'),hint=$('hint');
+if(!window.THREE){$('start').textContent='NO SE PUDO CARGAR 3D';$('start').disabled=true;return}
+let scene,camera,renderer,player,enemy,flashlight,clock;
+let started=false,ended=false,flashOn=true,keys=0,objectFound=false,footTimer=0,cinemaMode='';
+let yaw=0,pitch=0,moveX=0,moveY=0,running=false,near=null;const pressed=new Set();
+const keyObjects=[],colliders=[],decor=[];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mat=(color,rough=1)=>new THREE.MeshLambertMaterial({color});
+const wallMat=mat(0x42434a),floorMat=mat(0x292a2d),darkMat=mat(0x101116),woodMat=mat(0x49352b);
+function box(x,y,z,sx,sy,sz,m,solid=true){const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),m);o.position.set(x,y,z);scene.add(o);if(solid)colliders.push({x,z,hx:sx/2,hz:sz/2});return o}
+function build(){
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x050609);scene.fog=new THREE.FogExp2(0x07090d,.045);
+ camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.08,65);
+ renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'low-power'});
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,1));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=false;
+ $('game').appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0x9aa4b8,0x101018,.42));
+ scene.add(new THREE.AmbientLight(0x202532,.22));
+ // Linterna real: foco direccional amplio + carcasa visible en la cámara.
+ const lamp=new THREE.SpotLight(0xffe4b0,58,24,Math.PI/7,0.48,1.25);
+ lamp.position.set(0,0,0);lamp.target.position.set(0,0,-1);camera.add(lamp);camera.add(lamp.target);flashlight=lamp;
+ const flashlightBody=new THREE.Group();
+ const handle=new THREE.Mesh(new THREE.CylinderGeometry(.055,.075,.28,8),mat(0x24272c));handle.rotation.x=Math.PI/2;handle.position.set(.34,-.29,-.48);camera.add(handle);flashlightBody.add(handle);
+ const lens=new THREE.Mesh(new THREE.CircleGeometry(.061,10),new THREE.MeshBasicMaterial({color:0xffe6a8}));lens.position.set(.34,-.29,-.635);camera.add(lens);flashlightBody.add(lens);
+ // Suelo, techo y perímetro del edificio.
+ box(0,-.18,-17,15,.35,44,floorMat,false);box(0,3.25,-17,15,.3,44,darkMat,false);
+ box(-7.55,1.5,-17,.3,3.2,44,wallMat);box(7.55,1.5,-17,.3,3.2,44,wallMat);
+ // Pasillo central ancho. Las paredes laterales tienen huecos de puerta reales.
+ // Cada aula queda abierta por z=-8, -17 y -26; los marcos hacen visible la entrada.
+ const doorZ=[-8,-17,-26];
+ for(const side of [-1,1]){
+  let segments=[[-38,-31],[-21.5,-12.5],[-12.5,-3]];
+  // Paredes longitudinales por tramos, dejando una abertura de 2.2 unidades.
+  const ranges=[[-38,-27.1],[-24.9,-18.1],[-15.9,-9.1],[-6.9,4]];
+  ranges.forEach(([a,b])=>{const len=b-a;box(side*2.05,1.5,(a+b)/2,.22,3.0,len,wallMat)});
+  // Pared exterior del fondo de cada aula y marcos de puerta.
+  for(const z of doorZ){
+   box(side*3.35,1.45,z-3.1,4.2,2.9,.22,wallMat);
+   box(side*2.05,1.15,z-.98,.18,2.3,.18,woodMat,false);
+   box(side*2.05,1.15,z+.98,.18,2.3,.18,woodMat,false);
+   box(side*2.05,2.35,z, .18,.16,2.15,woodMat,false);
+   // Puerta abierta pegada a la pared, decorativa y sin bloquear el paso.
+   const slab=box(side*2.55,1.1,z-.95,.9,2.2,.10,woodMat,false);slab.rotation.y=side*.18;
+  }
+ }
+ // Lámparas sencillas del techo.
+ for(let z=-4;z>-38;z-=6){const panel=new THREE.Mesh(new THREE.BoxGeometry(.9,.05,.45),mat(0x77736a));panel.position.set(0,3.02,z);scene.add(panel)}
+ // Pupitres dentro de las aulas laterales.
+ for(let z of [-8,-17,-26]){for(let side of [-1,1]){for(let j=0;j<2;j++){const x=side*(3.25+j*.85);box(x,.58,z-2.0,1.0,.12,.65,woodMat,false);box(x,.28,z-2.0,.08,.5,.08,darkMat,false)}}}
+ // Salida al fondo con hueco central transitable.
+ box(-4.1,1.5,-39,6.9,3,.25,wallMat);box(4.1,1.5,-39,6.9,3,.25,wallMat);
+ const door=box(0,1.25,-39,2.1,2.5,.18,mat(0x292018),false);door.userData.exit=true;
+ // keys
+ const positions=[[-3.5,0,-8],[3.5,0,-17],[0,0,-30]];
+ positions.forEach((p,i)=>{const g=new THREE.Group();const ring=new THREE.Mesh(new THREE.TorusGeometry(.18,.055,5,10),mat(0xe2b84f));ring.rotation.x=Math.PI/2;g.add(ring);const stem=new THREE.Mesh(new THREE.BoxGeometry(.08,.34,.08),mat(0xe2b84f));stem.position.y=-.2;g.add(stem);g.position.set(p[0],.75,p[2]);scene.add(g);keyObjects.push({mesh:g,got:false});});
+ // Interactable mysterious object
+ const orb=new THREE.Mesh(new THREE.IcosahedronGeometry(.28,0),mat(0x6c2530));orb.position.set(-3.5,.8,-26);scene.add(orb);orb.userData.kind='object';decor.push(orb);
+ // Tres personajes: coloca personaje1.png, personaje2.png y personaje3.png en assets/.
+ // Si falta una imagen, se conserva una silueta oscura de sustitución.
+ function addCharacterImage(file,x,z){
+  const loader=new THREE.TextureLoader();
+  loader.load(file,tex=>{tex.colorSpace=THREE.SRGBColorSpace;const sprite=new THREE.Mesh(new THREE.PlaneGeometry(1.15,1.9),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));sprite.position.set(x,1.05,z);scene.add(sprite)},undefined,()=>{});
+ }
+ addCharacterImage('assets/personaje1.png',-6.8,-8);
+ addCharacterImage('assets/personaje2.png',6.8,-17);
+ addCharacterImage('assets/personaje3.png',-6.8,-26);
+ // Enemy placeholder character: replace its look with your own image/texture later.
+ enemy=new THREE.Group();const body=new THREE.Mesh(new THREE.BoxGeometry(.65,1.35,.38),mat(0x17151a));body.position.y=.9;enemy.add(body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.28,7,6),mat(0x77706c));head.position.y=1.75;enemy.add(head);
+ const eyeMat=new THREE.MeshBasicMaterial({color:0xb51f2b});
+ for(let x of [-.1,.1]){const e=new THREE.Mesh(new THREE.SphereGeometry(.035,5,5),eyeMat);e.position.set(x,1.78,-.24);enemy.add(e)}
+ enemy.position.set(0,0,-34);scene.add(enemy);
+ player=new THREE.Object3D();player.position.set(0,0,1);scene.add(player);camera.position.set(0,1.62,0);player.add(camera);
+ clock=new THREE.Clock();
+}
+function dist(a,b){return Math.hypot(a.x-b.x,a.z-b.z)}
+function blocked(x,z){for(const c of colliders){if(Math.abs(x-c.x)<c.hx+.28&&Math.abs(z-c.z)<c.hz+.28)return true}return false}
+function showHint(t){hint.textContent=t;hint.style.opacity=t?'1':'0'}
+function interact(){
+ if(!started||ended)return;
+ if(near?.type==='key'){near.item.got=true;scene.remove(near.item.mesh);keys++;$('keys').textContent=keys+' / 3';playSound('keyAudio',.8);showHint('Encontraste una llave.');setTimeout(()=>showHint(''),1400);near=null;return}
+ if(near?.type==='object'){ $('objectPopup').style.display='flex';objectFound=true;return}
+ if(near?.type==='exit'){if(keys===3)finish('win');else if(keys>0)finish('incomplete');else {playSound('doorAudio',.65);showHint('La salida está cerrada. Necesitas encontrar llaves.');}}
+}
+function playSound(id,volume=0.7){const a=$(id);if(!a)return;try{a.pause();a.currentTime=0;a.volume=volume;const p=a.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
+function showResult(type){
+ const cfg=type==='dead'?['FINAL 1 — TE ENCONTRÓ','La criatura te alcanzó. La escuela se quedó con otra víctima.']:
+ type==='win'?['FINAL 3 — ESCAPASTE','Conseguiste las tres llaves y lograste salir.']:
+ ['FINAL 2 — A MEDIAS','Encontraste algunas llaves, pero no las suficientes. Algo sigue dentro de la escuela.'];
+ const card=document.createElement('div');card.className='card';
+ const title=document.createElement('h1');title.textContent=cfg[0];
+ const desc=document.createElement('p');desc.textContent=cfg[1];
+ const btn=document.createElement('button');btn.className='mainbtn';btn.textContent='VOLVER A JUGAR';btn.onclick=()=>location.reload();
+ card.append(title,desc,btn);screen.replaceChildren(card);screen.style.display='flex';
+}
+function playCinematic(file,type){
+ const wrap=$('cinematic'),video=$('cinemaVideo');cinemaMode=type;wrap.style.display='flex';$('cinemaLabel').textContent='CINEMÁTICA — '+(type==='secret'?'SECRETO':'FINAL');
+ video.pause();video.removeAttribute('src');video.load();video.src=file;video.currentTime=0;
+ video.onended=()=>{wrap.style.display='none';video.pause();if(type==='secret'){showHint('Has descubierto un secreto de la escuela.');setTimeout(()=>showHint(''),2500);started=true;}else showResult(type);};
+ video.onerror=()=>{wrap.style.display='none';if(type==='secret'){showHint('No se encontró el video del easter egg.');setTimeout(()=>showHint(''),2500);started=true;}else showResult(type);};
+ const p=video.play();if(p&&p.catch)p.catch(()=>{ // Algunos móviles requieren un segundo toque para reproducir audio/video.
+  $('cinemaLabel').textContent='Toca el video para reproducir la cinemática';video.controls=true;
+ });
+}
+function finish(type){if(ended)return;ended=true;started=false;playSound('doorAudio',.8);const bg=$('bgAudio');bg.pause();const files={dead:'finales/video_final_1_muerte.mp4',incomplete:'finales/video_final_2_incompleto.mp4',win:'finales/video_final_3_bueno.mp4'};playCinematic(files[type],type);}
+function playSecret(){if(!objectFound)return;started=false;$('objectPopup').style.display='none';playSound('objectAudio',.8);playCinematic('video/easter_egg/secreto.mp4','secret');}
+
+function update(dt){
+ if(!started||ended)return;
+ const speed=running?4.1:2.45;
+ const forward=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+ const right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+ const kx=(pressed.has('d')||pressed.has('arrowright')?1:0)-(pressed.has('a')||pressed.has('arrowleft')?1:0);
+ const ky=(pressed.has('s')||pressed.has('arrowdown')?1:0)-(pressed.has('w')||pressed.has('arrowup')?1:0);
+ const mx=clamp(moveX+kx,-1,1),my=clamp(moveY+ky,-1,1);
+ const dx=(forward.x*(-my)+right.x*mx)*speed*dt;
+ const dz=(forward.z*(-my)+right.z*mx)*speed*dt;
+ const nx=player.position.x+dx,nz=player.position.z+dz;
+ if(!blocked(nx,player.position.z))player.position.x=clamp(nx,-7.1,7.1);
+ if(!blocked(player.position.x,nz))player.position.z=clamp(nz,-38,3);
+ const moving=Math.abs(mx)+Math.abs(my)>.15;footTimer-=dt;if(moving&&footTimer<=0){playSound('footAudio',running?.42:.28);footTimer=running?.31:.48;}else if(!moving){const fa=$('footAudio');if(fa&&!fa.paused)fa.pause();footTimer=0;}
+ camera.rotation.order='YXZ';camera.rotation.y=yaw;camera.rotation.x=pitch;
+ camera.position.set(0,1.62,0);
+ flashlight.intensity=flashOn?58:0;
+ // Enemy slowly follows; distance creates tension, not high-cost pathfinding.
+ const d=dist(enemy.position,player.position);
+ if(d<19){const ang=Math.atan2(player.position.x-enemy.position.x,player.position.z-enemy.position.z);const chase=d<11?1:0.42;enemy.position.x+=Math.sin(ang)*chase*dt;enemy.position.z+=Math.cos(ang)*chase*dt;enemy.rotation.y=ang+Math.PI;}
+ if(d<3.5&&d>.85&&!window._scarePlayed){window._scarePlayed=true;const a=$('scareAudio');a.volume=.65;a.play().catch(()=>{});}if(d>=3.5)window._scarePlayed=false;if(d<.85){finish('dead');return}
+ keyObjects.forEach(k=>{if(!k.got)k.mesh.rotation.y+=dt*1.2});
+ let closest=99;near=null;
+ keyObjects.forEach(k=>{if(!k.got){const d=dist(k.mesh.position,player.position);if(d<1.5&&d<closest){closest=d;near={type:'key',item:k}}}});
+ decor.forEach(o=>{const d=dist(o.position,player.position);if(d<1.7&&d<closest){closest=d;near={type:'object',item:o}}});
+ const exitD=Math.hypot(player.position.x,player.position.z+38.2);
+ if(exitD<2.4&&exitD<closest){closest=exitD;near={type:'exit'}}
+ showHint(near?(near.type==='key'?'Toca USAR para recoger la llave':near.type==='object'?'Toca USAR para examinar el objeto':'Toca USAR para intentar salir'):'');
+}
+function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04);update(dt);renderer.render(scene,camera)}
+build();loop();
+$('start').onclick=()=>{started=true;screen.style.display='none';const bg=$('bgAudio');bg.volume=.35;bg.play().catch(()=>{});if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});};
+$('use').addEventListener('pointerdown',e=>{e.preventDefault();interact()});
+$('flash').addEventListener('pointerdown',e=>{e.preventDefault();flashOn=!flashOn;$('flash').style.opacity=flashOn?'1':'.45'});
+$('run').addEventListener('pointerdown',e=>{e.preventDefault();running=true});['pointerup','pointercancel','pointerleave'].forEach(ev=>$('run').addEventListener(ev,()=>running=false));
+$('closeObject').onclick=()=>$('objectPopup').style.display='none';
+$('playSecret').onclick=playSecret;
+$('skipVideo').onclick=()=>{const v=$('cinemaVideo');v.pause();$('cinematic').style.display='none';if(cinemaMode==='secret'){started=true;showHint('Easter egg descubierto.');setTimeout(()=>showHint(''),2200);}else showResult(cinemaMode);};
+$('cinemaVideo').addEventListener('click',()=>{const v=$('cinemaVideo');if(v.paused)v.play().catch(()=>{});});
+const area=$('stickArea'),stick=$('stick');let stickId=null;
+function stickMove(e){const r=area.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let x=e.clientX-cx,y=e.clientY-cy;const max=r.width*.32,len=Math.hypot(x,y)||1;if(len>max){x=x/len*max;y=y/len*max}stick.style.transform=`translate(calc(-50% + ${x}px),calc(-50% + ${y}px))`;moveX=x/max;moveY=y/max}
+area.addEventListener('pointerdown',e=>{stickId=e.pointerId;area.setPointerCapture(stickId);stickMove(e)});
+area.addEventListener('pointermove',e=>{if(e.pointerId===stickId)stickMove(e)});
+function resetStick(){stickId=null;moveX=moveY=0;stick.style.transform='translate(-50%,-50%)'}
+area.addEventListener('pointerup',resetStick);area.addEventListener('pointercancel',resetStick);
+let lookId=null,lastX=0,lastY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&e.clientX<innerWidth*.42&&e.clientY>innerHeight*.55)return;lookId=e.pointerId;lastX=e.clientX;lastY=e.clientY});
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();pressed.add(k);if(k===' '){e.preventDefault();running=true}if(k==='e'||k==='enter')interact();if(k==='f'){flashOn=!flashOn;$('flash').style.opacity=flashOn?'1':'.45'}});
+addEventListener('keyup',e=>{const k=e.key.toLowerCase();pressed.delete(k);if(k===' ')running=false});
+addEventListener('blur',()=>{pressed.clear();running=false;resetStick()});
+renderer.domElement.addEventListener('pointermove',e=>{if(e.pointerId!==lookId||!started)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;yaw-=dx*.004;pitch=clamp(pitch-dy*.003,-1.1,1.1)});
+['pointerup','pointercancel'].forEach(ev=>renderer.domElement.addEventListener(ev,e=>{if(e.pointerId===lookId)lookId=null}));
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1))});
+})();
+</script>
+</body>
+</html>
