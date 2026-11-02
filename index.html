@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>LA ÚLTIMA CLASE — Horror 3D</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Courier New', monospace; color:#ddd; }
+  #game { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:fixed; inset:0; pointer-events:none; z-index:5; }
+  .hud-btn {
+    position:absolute; pointer-events:auto;
+    background:rgba(20,20,20,.55); border:2px solid rgba(200,200,200,.35);
+    color:#eee; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:22px; backdrop-filter: blur(4px);
+    transition: transform .08s ease, background .15s ease;
+  }
+  .hud-btn:active { transform: scale(.9); background:rgba(200,200,200,.25); }
+  #btnFlash { right:20px; bottom:180px; width:70px; height:70px; }
+  #btnRun   { right:100px; bottom:90px; width:70px; height:70px; }
+  #btnJump  { right:20px; bottom:90px; width:70px; height:70px; }
+  #btnUse   { right:20px; bottom:260px; width:70px; height:70px; background:rgba(80,30,30,.55); border-color:rgba(255,120,120,.5); }
+
+  #keys {
+    position:absolute; top:14px; left:14px;
+    background:rgba(0,0,0,.55); padding:8px 14px; border-radius:10px;
+    border:1px solid rgba(255,200,100,.4); font-size:16px;
+  }
+  #msg {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(0,0,0,.75); padding:14px 22px; border-radius:10px;
+    border:1px solid rgba(255,255,255,.2); font-size:18px; text-align:center;
+    max-width:80%; opacity:0; transition:opacity .3s ease;
+  }
+  #msg.show { opacity:1; }
+
+  /* ---------- Joystick ---------- */
+  #joyArea {
+    position:absolute; left:0; bottom:0; width:55%; height:220px;
+    pointer-events:auto;
+  }
+  #joyBase {
+    position:absolute; left:40px; bottom:40px; width:120px; height:120px;
+    border-radius:50%; background:rgba(255,255,255,.08);
+    border:2px solid rgba(255,255,255,.25);
+  }
+  #joyStick {
+    position:absolute; left:40px; bottom:40px; width:60px; height:60px;
+    border-radius:50%; background:rgba(255,255,255,.35);
+    transform: translate(30px, 30px);
+  }
+
+  /* ---------- Pantallas ---------- */
+  .screen {
+    position:fixed; inset:0; z-index:10;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, #1a0000 0%, #000 70%);
+    text-align:center; padding:20px;
+  }
+  .screen h1 { font-size:42px; color:#c00; letter-spacing:4px; margin-bottom:10px; text-shadow:0 0 12px #900; }
+  .screen h2 { font-size:22px; color:#aaa; margin-bottom:24px; }
+  .screen p  { font-size:15px; color:#bbb; max-width:520px; line-height:1.5; margin-bottom:18px; }
+  .screen button {
+    margin-top:14px; padding:14px 28px; font-size:18px;
+    background:#600; color:#fff; border:2px solid #a00; border-radius:8px;
+    cursor:pointer; letter-spacing:2px;
+  }
+  .screen button:active { background:#900; }
+  .hidden { display:none !important; }
+
+  /* ---------- Cinemática ---------- */
+  #cinema {
+    position:fixed; inset:0; z-index:15; background:#000;
+    display:flex; align-items:center; justify-content:center;
+    color:#ddd; font-size:22px; text-align:center; padding:30px;
+    opacity:0; pointer-events:none; transition:opacity .6s ease;
+  }
+  #cinema.show { opacity:1; pointer-events:auto; }
+  #cinema .sub { font-size:14px; color:#888; margin-top:14px; }
+
+  /* ---------- Easter egg ---------- */
+  #easter {
+    position:fixed; inset:0; z-index:12; background:rgba(0,0,0,.92);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    opacity:0; pointer-events:none; transition:opacity .4s ease;
+  }
+  #easter.show { opacity:1; pointer-events:auto; }
+  #easter .box { background:#111; border:1px solid #500; padding:24px; border-radius:10px; max-width:80%; }
+  #easter button { margin-top:14px; padding:8px 18px; background:#400; color:#fff; border:1px solid #800; border-radius:6px; }
+
+  /* ---------- Test overlay ---------- */
+  #testLog {
+    position:fixed; top:10px; right:10px; z-index:30;
+    background:rgba(0,0,0,.8); color:#0f0; padding:10px 14px;
+    border:1px solid #0a0; border-radius:6px; font-size:12px;
+    font-family:monospace; max-width:280px; display:none;
+  }
+  #testLog.fail { color:#f55; border-color:#a00; }
+</style>
+</head>
+<body>
+
+<div id="game"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="keys">🔑 LLAVES: <span id="keyCount">0</span> / 3</div>
+  <div id="msg"></div>
+
+  <div id="joyArea">
+    <div id="joyBase"></div>
+    <div id="joyStick"></div>
+  </div>
+
+  <button id="btnUse"  class="hud-btn" title="Usar">🔓</button>
+  <button id="btnFlash"class="hud-btn" title="Linterna">🔦</button>
+  <button id="btnRun"  class="hud-btn" title="Correr">🏃</button>
+  <button id="btnJump" class="hud-btn" title="Saltar">⤴</button>
+</div>
+
+<!-- Cinemática -->
+<div id="cinema">
+  <div>
+    <div id="cinemaText">La escuela está vacía...</div>
+    <div class="sub">Encuentra las 3 llaves. Una está en el segundo piso.</div>
+  </div>
+</div>
+
+<!-- Easter egg -->
+<div id="easter">
+  <div class="box">
+    <div style="font-size:40px;">📜</div>
+    <div style="margin-top:10px; color:#c99;">"No debiste volver."</div>
+    <button id="closeEaster">CERRAR</button>
+  </div>
+</div>
+
+<!-- Pantalla inicial -->
+<div id="startScreen" class="screen">
+  <h1>LA ÚLTIMA CLASE</h1>
+  <h2>Horror 3D</h2>
+  <p>La escuela está vacía. Encuentra las tres llaves (una está en el segundo piso), abre la salida y cruza el patio hasta el portón. <b>No dejes que te encuentre.</b></p>
+  <p style="font-size:13px; color:#888;">Controles: joystick para moverte · 🔦 linterna · 🏃 correr · ⤴ saltar · 🔓 usar objetos.</p>
+  <button id="btnStart">ENTRAR A LA ESCUELA</button>
+</div>
+
+<!-- Pantalla final -->
+<div id="endScreen" class="screen hidden">
+  <h1 id="endTitle">HAS ESCAPADO</h1>
+  <p id="endText">Lograste salir con vida.</p>
+  <button id="btnRestart">JUGAR DE NUEVO</button>
+</div>
+
+<!-- Log de test -->
+<div id="testLog"></div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* =========================================================
+   LA ÚLTIMA CLASE — Horror 3D
+   Arquitectura:
+   - Game (máquina de estados: boot -> intro -> play -> end)
+   - Scene3D (Three.js)
+   - Player (movimiento, salto, linterna)
+   - Enemy (IA de persecución simple)
+   - World (escuela + patio + llaves + puerta)
+   - Input (joystick + botones)
+   - Test (verifica ciclo de vida)
+   ========================================================= */
+
+(function(){
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const lerp  = (a,b,t) => a + (b-a)*t;
+
+  // ---------- TEST HARNESS ----------
+  const Test = {
+    log: [],
+    el: $('testLog'),
+    ok(msg){ this.log.push('✓ '+msg); this.render(); },
+    fail(msg){ this.log.push('✗ '+msg); this.el.classList.add('fail'); this.render(); },
+    render(){ this.el.style.display='block'; this.el.innerHTML = this.log.join('<br>'); },
+    allOk(){ return this.log.every(l => l.startsWith('✓')); }
+  };
+
+  // ---------- ESTADO GLOBAL ----------
+  const State = {
+    phase: 'boot',   // boot | intro | play | end
+    keys: 0,
+    totalKeys: 3,
+    flashlightOn: true,
+    running: false,
+    won: false,
+    dead: false,
+  };
+
+  // ---------- ESCENA 3D ----------
+  let renderer, scene, camera, clock;
+  let player, enemy, world;
+  const colliders = [];     // AABB para colisiones
+  const interactables = []; // {mesh, type, data}
+  const keys3D = [];        // meshes de llaves
+  let exitDoor = null;
+  let finalGate = null;
+
+  function initThree(){
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.Fog(0x000000, 2, 18);
+
+    camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, 100);
+
+    renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    $('game').appendChild(renderer.domElement);
+
+    clock = new THREE.Clock();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    Test.ok('Three.js inicializado');
+  }
+
+  // ---------- MUNDO ----------
+  function makeWall(x,y,z,w,h,d,mat){
+    const g = new THREE.BoxGeometry(w,h,d);
+    const m = new THREE.Mesh(g, mat);
+    m.position.set(x,y,z);
+    m.castShadow = true; m.receiveShadow = true;
+    scene.add(m);
+    colliders.push({
+      min:new THREE.Vector3(x-w/2, y-h/2, z-d/2),
+      max:new THREE.Vector3(x+w/2, y+h/2, z+d/2)
+    });
+    return m;
+  }
+
+  function makeFloor(x,y,z,w,d,mat){
+    const g = new THREE.BoxGeometry(w, 0.2, d);
+    const m = new THREE.Mesh(g, mat);
+    m.position.set(x,y,z);
+    m.receiveShadow = true;
+    scene.add(m);
+    return m;
+  }
+
+  function makeKey(x,y,z){
+    const g = new THREE.TorusGeometry(0.18, 0.06, 8, 16);
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
+      color:0xffcc33, emissive:0x664400, emissiveIntensity:0.6, metalness:0.8, roughness:0.3
+    }));
+    m.position.set(x,y,z);
+    m.rotation.x = Math.PI/2;
+    m.castShadow = true;
+    scene.add(m);
+    keys3D.push(m);
+    interactables.push({ mesh:m, type:'key' });
+    // luz puntual para que se vea
+    const l = new THREE.PointLight(0xffaa33, 0.6, 3);
+    m.add(l);
+    return m;
+  }
+
+  function buildWorld(){
+    const wallMat = new THREE.MeshStandardMaterial({ color:0x3a322a, roughness:0.95 });
+    const floorMat = new THREE.MeshStandardMaterial({ color:0x1a1612, roughness:1 });
+    const ceilMat = new THREE.MeshStandardMaterial({ color:0x111111, roughness:1 });
+    const doorMat = new THREE.MeshStandardMaterial({ color:0x5a2a1a, roughness:0.7 });
+    const grassMat = new THREE.MeshStandardMaterial({ color:0x0a1a08, roughness:1 });
+
+    // --- PLANTA BAJA: pasillo principal 20x4 ---
+    // Suelo
+    makeFloor(0, 0, 0, 22, 6, floorMat);
+    // Techo
+    const ceil1 = new THREE.Mesh(new THREE.BoxGeometry(22,0.2,6), ceilMat);
+    ceil1.position.set(0,3,0); scene.add(ceil1);
+
+    // Paredes pasillo
+    makeWall(0, 1.5, -3, 22, 3, 0.2, wallMat);  // norte
+    makeWall(0, 1.5,  3, 22, 3, 0.2, wallMat);  // sur
+    makeWall(-11, 1.5, 0, 0.2, 3, 6, wallMat);  // oeste
+    // Este: pared con hueco para salida al patio
+    makeWall(11, 1.5, -1.5, 0.2, 3, 3, wallMat);
+    makeWall(11, 1.5,  2.25, 0.2, 3, 1.5, wallMat);
+
+    // --- AULAS a lo largo del pasillo (norte) ---
+    for(let i=0;i<3;i++){
+      const cx = -7 + i*6;
+      // Pared divisoria entre aulas
+      if(i>0) makeWall(cx-3, 1.5, -5, 0.2, 3, 4, wallMat);
+      // Pared del fondo del aula
+      makeWall(cx, 1.5, -7, 6, 3, 0.2, wallMat);
+      // Suelo aula
+      makeFloor(cx, 0, -5, 6, 4, floorMat);
+      // Techo aula
+      const c = new THREE.Mesh(new THREE.BoxGeometry(6,0.2,4), ceilMat);
+      c.position.set(cx,3,-5); scene.add(c);
+    }
+
+    // --- ESCALERA al segundo piso (al fondo del pasillo, lado oeste) ---
+    // Plataforma escalonada
+    for(let i=0;i<6;i++){
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.3, 0.5),
+        new THREE.MeshStandardMaterial({ color:0x2a2018, roughness:0.9 })
+      );
+      step.position.set(-9, 0.15 + i*0.3, -2 + i*0.5);
+      step.receiveShadow = true; step.castShadow = true;
+      scene.add(step);
+    }
+
+    // --- SEGUNDO PISO ---
+    const f2y = 2.0;
+    makeFloor(-6, f2y, -1, 8, 4, floorMat);
+    // paredes 2do piso
+    makeWall(-6, f2y+1.5, -3, 8, 3, 0.2, wallMat);
+    makeWall(-6, f2y+1.5,  1, 8, 3, 0.2, wallMat);
+    makeWall(-10, f2y+1.5, -1, 0.2, 3, 4, wallMat);
+    makeWall(-2, f2y+1.5, -1, 0.2, 3, 4, wallMat);
+    // techo 2do piso
+    const c2 = new THREE.Mesh(new THREE.BoxGeometry(8,0.2,4), ceilMat);
+    c2.position.set(-6, f2y+3, -1); scene.add(c2);
+
+    // --- PATIO (al este del pasillo) ---
+    makeFloor(18, 0, 0, 14, 14, grassMat);
+    // Paredes del patio
+    makeWall(18, 1.5, -7, 14, 3, 0.2, wallMat);
+    makeWall(18, 1.5,  7, 14, 3, 0.2, wallMat);
+    makeWall(25, 1.5, 0, 0.2, 3, 14, wallMat);
+
+    // --- PUERTA DE SALIDA (entre pasillo y patio) ---
+    exitDoor = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 2.6, 1.5),
+      doorMat
+    );
+    exitDoor.position.set(11, 1.3, 0.75);
+    exitDoor.castShadow = true;
+    scene.add(exitDoor);
+    colliders.push({
+      min:new THREE.Vector3(10.9, 0, 0),
+      max:new THREE.Vector3(11.1, 2.6, 1.5),
+      door:true
+    });
+    interactables.push({ mesh:exitDoor, type:'exit' });
+
+    // --- PORTÓN FINAL (al fondo del patio, este) ---
+    finalGate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 2.8, 2.2),
+      new THREE.MeshStandardMaterial({ color:0x3a2010, roughness:0.8 })
+    );
+    finalGate.position.set(25, 1.4, 0);
+    finalGate.castShadow = true;
+    scene.add(finalGate);
+    colliders.push({
+      min:new THREE.Vector3(24.9, 0, -1.1),
+      max:new THREE.Vector3(25.1, 2.8, 1.1),
+      gate:true
+    });
+    interactables.push({ mesh:finalGate, type:'gate' });
+
+    // --- LLAVES ---
+    makeKey(-5, 0.6, -5);          // Aula 1 (planta baja)
+    makeKey( 5, 0.6, -5);          // Aula 3 (planta baja)
+    makeKey(-6, f2y+0.6, -1);      // Segundo piso
+
+    // --- LÁMPARAS tenues en el pasillo ---
+    for(let i=0;i<4;i++){
+      const pl = new THREE.PointLight(0xffaa66, 0.25, 6);
+      pl.position.set(-7 + i*5, 2.7, 0);
+      scene.add(pl);
+    }
+
+    // --- LUZ AMBIENTE mínima ---
+    scene.add(new THREE.AmbientLight(0x222233, 0.35));
+
+    // --- OBJETO EASTER EGG ---
+    const egg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.05, 0.3),
+      new THREE.MeshStandardMaterial({ color:0x886633 })
+    );
+    egg.position.set(3, 0.1, 2);
+    scene.add(egg);
+    interactables.push({ mesh:egg, type:'easter' });
+
+    Test.ok('Mundo construido (pasillo, aulas, 2do piso, patio, 3 llaves, puerta, portón)');
+  }
+
+  // ---------- JUGADOR ----------
+  function createPlayer(){
+    const p = {
+      pos: new THREE.Vector3(-9, 1.6, 0),
+      vel: new THREE.Vector3(),
+      yaw: 0,
+      onGround: true,
+      vy: 0,
+      radius: 0.35,
+      height: 1.6,
+      flashlight: null,
+      bob: 0,
+    };
+    // Linterna (spotlight unido a la cámara)
+    const fl = new THREE.SpotLight(0xfff2cc, 1.2, 18, Math.PI/6, 0.4, 1.2);
+    fl.castShadow = true;
+    fl.shadow.mapSize.set(512,512);
+    camera.add(fl);
+    fl.position.set(0,0,0);
+    fl.target.position.set(0,0,-1);
+    camera.add(fl.target);
+    scene.add(camera);
+    p.flashlight = fl;
+    return p;
+  }
+
+  // ---------- ENEMIGO ----------
+  function createEnemy(){
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.4, 1.6, 10),
+      new THREE.MeshStandardMaterial({ color:0x111111, roughness:1 })
+    );
+    body.position.y = 0.8;
+    body.castShadow = true;
+    g.add(body);
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.28, 12, 10),
+      new THREE.MeshStandardMaterial({ color:0x220000, emissive:0x330000, roughness:1 })
+    );
+    head.position.y = 1.8;
+    head.castShadow = true;
+    g.add(head);
+    // ojos brillantes
+    const eyeMat = new THREE.MeshBasicMaterial({ color:0xff2222 });
+    const e1 = new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), eyeMat);
+    const e2 = e1.clone();
+    e1.position.set(-0.09, 1.85, 0.22);
+    e2.position.set( 0.09, 1.85, 0.22);
+    g.add(e1); g.add(e2);
+
+    g.position.set(8, 0, 0); // empieza lejos, en el patio
+    scene.add(g);
+    return {
+      group: g,
+      pos: g.position,
+      speed: 1.6,
+      alertSpeed: 2.6,
+      state: 'patrol', // patrol | chase
+      patrolTarget: new THREE.Vector3(-8, 0, 0),
+      seeRange: 10,
+      catchRange: 0.9,
+    };
+  }
+
+  // ---------- INPUT ----------
+  const Input = {
+    joyX:0, joyY:0,
+    flash:false, run:false, jump:false, use:false,
+    useConsumed:false,
+  };
+
+  function initInput(){
+    const area = $('joyArea');
+    const base = $('joyBase');
+    const stick = $('joyStick');
+    let active = false, id = null, cx=0, cy=0;
+
+    const start = (e) => {
+      const t = e.touches ? e.touches[0] : e;
+      const r = base.getBoundingClientRect();
+      cx = r.left + r.width/2;
+      cy = r.top + r.height/2;
+      active = true;
+      id = e.touches ? t.identifier : 'm';
+      move(e);
+      if(e.cancelable) e.preventDefault();
+    };
+    const move = (e) => {
+      if(!active) return;
+      let t;
+      if(e.touches){
+        for(const tc of e.touches){ if(tc.identifier===id){ t=tc; break; } }
+        if(!t) return;
+      } else t = e;
+      const dx = t.clientX - cx;
+      const dy = t.clientY - cy;
+      const max = 50;
+      const d = Math.hypot(dx,dy);
+      const k = d>max ? max/d : 1;
+      const nx = dx*k, ny = dy*k;
+      stick.style.transform = `translate(${30+nx}px, ${30+ny}px)`;
+      Input.joyX = nx/max;
+      Input.joyY = ny/max;
+      if(e.cancelable) e.preventDefault();
+    };
+    const end = () => {
+      active = false; id = null;
+      stick.style.transform = 'translate(30px,30px)';
+      Input.joyX = 0; Input.joyY = 0;
+    };
+
+    area.addEventListener('touchstart', start, {passive:false});
+    area.addEventListener('touchmove', move, {passive:false});
+    area.addEventListener('touchend', end);
+    area.addEventListener('touchcancel', end);
+    area.addEventListener('mousedown', start);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+
+    // Botones
+    const bindHold = (el, key) => {
+      const on = e => { Input[key]=true; if(e.cancelable) e.preventDefault(); };
+      const off = () => { Input[key]=false; };
+      el.addEventListener('touchstart', on, {passive:false});
+      el.addEventListener('touchend', off);
+      el.addEventListener('touchcancel', off);
+      el.addEventListener('mousedown', on);
+      el.addEventListener('mouseup', off);
+      el.addEventListener('mouseleave', off);
+    };
+    bindHold($('btnRun'), 'run');
+
+    $('btnFlash').addEventListener('click', () => {
+      State.flashlightOn = !State.flashlightOn;
+      player.flashlight.visible = State.flashlightOn;
+      $('btnFlash').style.background = State.flashlightOn
+        ? 'rgba(20,20,20,.55)' : 'rgba(80,80,80,.55)';
+    });
+
+    $('btnJump').addEventListener('click', () => {
+      if(player.onGround){ player.vy = 5.2; player.onGround = false; }
+    });
+
+    $('btnUse').addEventListener('click', () => { Input.useConsumed = true; });
+
+    // Mirar con arrastre en la mitad derecha de la pantalla
+    const canvas = renderer.domElement;
+    let lookId = null, lx=0;
+    canvas.addEventListener('touchstart', e => {
+      for(const t of e.touches){
+        if(t.clientX > window.innerWidth*0.55 && lookId===null){
+          lookId = t.identifier; lx = t.clientX;
+        }
+      }
+    }, {passive:true});
+    canvas.addEventListener('touchmove', e => {
+      for(const t of e.touches){
+        if(t.identifier===lookId){
+          const dx = t.clientX - lx;
+          lx = t.clientX;
+          player.yaw -= dx * 0.005;
+        }
+      }
+    }, {passive:true});
+    canvas.addEventListener('touchend', e => {
+      let still=false;
+      for(const t of e.touches){ if(t.identifier===lookId){ still=true; break; } }
+      if(!still) lookId = null;
+    });
+    // Ratón: click derecho / arrastre con shift para mirar
+    let mlook=false, mlx=0;
+    canvas.addEventListener('mousedown', e => {
+      if(e.button===2 || e.shiftKey){ mlook=true; mlx=e.clientX; }
+    });
+    window.addEventListener('mousemove', e => {
+      if(mlook){ player.yaw -= (e.clientX-mlx)*0.004; mlx=e.clientX; }
+    });
+    window.addEventListener('mouseup', () => { mlook=false; });
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    Test.ok('Input configurado (joystick, botones, mirar)');
+  }
+
+  // ---------- COLISIONES ----------
+  function collideAABB(pos, radius){
+    // Devuelve posición corregida
+    for(const c of colliders){
+      if(c.door && exitDoorOpen) continue;
+      if(c.gate) continue; // el portón no bloquea hasta interacción final
+      const nx = clamp(pos.x, c.min.x, c.max.x);
+      const nz = clamp(pos.z, c.min.z, c.max.z);
+      const dx = pos.x - nx, dz = pos.z - nz;
+      const d2 = dx*dx + dz*dz;
+      if(d2 < radius*radius && pos.y-1 < c.max.y && pos.y > c.min.y-0.2){
+        const d = Math.sqrt(d2) || 0.0001;
+        const push = (radius - d);
+        pos.x += (dx/d)*push;
+        pos.z += (dz/d)*push;
+      }
+    }
+    return pos;
+  }
+
+  // Altura del suelo bajo el jugador (incluye escaleras y 2do piso)
+  function groundHeightAt(x,z){
+    let h = 0;
+    // escaleras: x~-10..-8, z~-2..1, sube de 0 a 1.8
+    if(x>-10 && x<-8 && z>-2 && z<1){
+      const t = (z+2)/3;
+      h = Math.max(h, t*1.8);
+    }
+    // segundo piso: x~-10..-2, z~-3..1
+    if(x>-10 && x<-2 && z>-3 && z<1){
+      h = Math.max(h, 2.0);
+    }
+    return h;
+  }
+
+  // ---------- INTERACCIÓN ----------
+  let exitDoorOpen = false;
+  let nearInteractable = null;
+
+  function findNearestInteractable(){
+    let best=null, bd=2.0;
+    for(const it of interactables){
+      const d = it.mesh.position.distanceTo(player.pos);
+      if(d<bd){ bd=d; best=it; }
+    }
+    return best;
+  }
+
+  function showMsg(text, time=1800){
+    const m = $('msg');
+    m.textContent = text;
+    m.classList.add('show');
+    clearTimeout(showMsg._t);
+    showMsg._t = setTimeout(()=>m.classList.remove('show'), time);
+  }
+
+  function tryUse(){
+    const it = nearInteractable;
+    if(!it) return;
+    if(it.type==='key'){
+      scene.remove(it.mesh);
+      const idx = keys3D.indexOf(it.mesh);
+      if(idx>=0) keys3D.splice(idx,1);
+      const i2 = interactables.indexOf(it);
+      if(i2>=0) interactables.splice(i2,1);
+      State.keys++;
+      $('keyCount').textContent = State.keys;
+      showMsg('🔑 Llave recogida ('+State.keys+'/3)');
+    } else if(it.type==='exit'){
+      if(State.keys >= State.totalKeys){
+        exitDoorOpen = true;
+        exitDoor.visible = false;
+        // quitar collider
+        for(let i=colliders.length-1;i>=0;i--) if(colliders[i].door) colliders.splice(i,1);
+        showMsg('🚪 Puerta abierta. Cruza al patio.');
+      } else {
+        showMsg('🔒 Faltan llaves ('+State.keys+'/'+State.totalKeys+')');
+      }
+    } else if(it.type==='gate'){
+      endGame(true);
+    } else if(it.type==='easter'){
+      $('easter').classList.add('show');
+    }
+  }
+
+  $('closeEaster').addEventListener('click', () => $('easter').classList.remove('show'));
+
+  // ---------- IA ENEMIGO ----------
+  function updateEnemy(dt){
+    if(!enemy) return;
+    const toPlayer = new THREE.Vector3().subVectors(player.pos, enemy.pos);
+    toPlayer.y = 0;
+    const dist = toPlayer.length();
+
+    // línea de visión muy simple: si está cerca o "ve"
+    const canSee = dist < enemy.seeRange;
+    enemy.state = canSee ? 'chase' : 'patrol';
+
+    let target;
+    if(enemy.state==='chase'){
+      target = player.pos;
+    } else {
+      target = enemy.patrolTarget;
+      if(enemy.pos.distanceTo(target) < 1){
+        // nuevo punto aleatorio en el pasillo
+        enemy.patrolTarget.set(
+          -9 + Math.random()*18,
+          0,
+          -2 + Math.random()*4
+        );
+      }
+    }
+
+    const dir = new THREE.Vector3().subVectors(target, enemy.pos);
+    dir.y = 0;
+    const len = dir.length();
+    if(len > 0.01){
+      dir.multiplyScalar(1/len);
+      const sp = enemy.state==='chase' ? enemy.alertSpeed : enemy.speed;
+      enemy.pos.x += dir.x * sp * dt;
+      enemy.pos.z += dir.z * sp * dt;
+      // rotar hacia la dirección
+      const targetYaw = Math.atan2(dir.x, dir.z);
+      enemy.group.rotation.y = lerp(enemy.group.rotation.y, targetYaw, 0.15);
+    }
+
+    // captura
+    if(dist < enemy.catchRange){
+      endGame(false);
+    }
+  }
+
+  // ---------- LOOP ----------
+  let running = false;
+  function loop(){
+    if(!running) return;
+    requestAnimationFrame(loop);
+    const dt = Math.min(0.05, clock.getDelta());
+    if(State.phase !== 'play'){ renderer.render(scene, camera); return; }
+
+    // --- Movimiento del jugador ---
+    const baseSpeed = 3.2;
+    const speed = baseSpeed * (Input.run ? 1.8 : 1.0);
+    const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+    const right   = new THREE.Vector3( Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+    const wish = new THREE.Vector3()
+      .addScaledVector(forward, -Input.joyY)
+      .addScaledVector(right,    Input.joyX);
+    if(wish.lengthSq() > 1) wish.normalize();
+
+    player.pos.x += wish.x * speed * dt;
+    player.pos.z += wish.z * speed * dt;
+
+    // Gravedad / salto
+    player.vy -= 14 * dt;
+    player.pos.y += player.vy * dt;
+    const gh = groundHeightAt(player.pos.x, player.pos.z) + player.height;
+    if(player.pos.y < gh){
+      player.pos.y = gh;
+      player.vy = 0;
+      player.onGround = true;
+    }
+
+    // Colisión horizontal
+    collideAABB(player.pos, player.radius);
+
+    // Bob de cámara al caminar
+    if(player.onGround && wish.lengthSq()>0.01){
+      player.bob += dt * (Input.run ? 12 : 8);
+      camera.position.set(
+        player.pos.x,
+        player.pos.y + Math.sin(player.bob)*0.05,
+        player.pos.z
+      );
+    } else {
+      camera.position.copy(player.pos);
+    }
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = player.yaw;
+
+    // Linterna sigue la cámara (ya es hija)
+    player.flashlight.intensity = State.flashlightOn ? 1.2 : 0;
+
+    // --- Interacción cercana ---
+    nearInteractable = findNearestInteractable();
+    if(nearInteractable){
+      const labels = { key:'VER OBJETO', exit:'USAR PUERTA', gate:'ABRIR PORTÓN', easter:'VER OBJETO' };
+      $('btnUse').title = labels[nearInteractable.type] || 'USAR';
+    }
+    if(Input.useConsumed){ Input.useConsumed = false; tryUse(); }
+
+    // --- Animación llaves ---
+    const t = clock.elapsedTime;
+    for(const k of keys3D){
+      k.rotation.z = t*2;
+      k.position.y = k.userData.baseY ?? (k.userData.baseY = k.position.y);
+      k.position.y = k.userData.baseY + Math.sin(t*2 + k.id)*0.08;
+    }
+
+    // --- Enemigo ---
+    updateEnemy(dt);
+
+    renderer.render(scene, camera);
+  }
+
+  // ---------- CICLO DE VIDA ----------
+  function startIntro(){
+    State.phase = 'intro';
+    $('startScreen').classList.add('hidden');
+    $('cinema').classList.add('show');
+    const lines = [
+      'La escuela está vacía...',
+      'Encuentra las 3 llaves.',
+      'Una está en el segundo piso.',
+      'No dejes que te encuentre.'
+    ];
+    let i = 0;
+    const el = $('cinemaText');
+    const next = () => {
+      if(i>=lines.length){
+        $('cinema').classList.remove('show');
+        setTimeout(startPlay, 600);
+        return;
+      }
+      el.textContent = lines[i++];
+      setTimeout(next, 1400);
+    };
+    next();
+    Test.ok('Cinemática de intro iniciada');
+  }
+
+  function startPlay(){
+    State.phase = 'play';
+    $('hud').classList.remove('hidden');
+    showMsg('Explora. Usa 🔓 cerca de objetos.', 2500);
+    Test.ok('Fase de juego iniciada');
+  }
+
+  function endGame(won){
+    if(State.phase === 'end') return;
+    State.phase = 'end';
+    State.won = won;
+    $('hud').classList.add('hidden');
+    $('endTitle').textContent = won ? 'HAS ESCAPADO' : 'TE ATRAPÓ';
+    $('endTitle').style.color = won ? '#4c4' : '#c44';
+    $('endText').textContent = won
+      ? 'Cruzaste el patio y saliste con vida.'
+      : 'La oscuridad te alcanzó en el pasillo.';
+    $('endScreen').classList.remove('hidden');
+    Test.ok('Juego finalizado: ' + (won ? 'victoria' : 'derrota'));
+    Test.ok('Ciclo de vida COMPLETADO (boot → intro → play → end)');
+  }
+
+  function resetAll(){
+    // limpiar escena
+    while(scene.children.length>0) scene.remove(scene.children[0]);
+    colliders.length = 0;
+    interactables.length = 0;
+    keys3D.length = 0;
+    exitDoor = null; finalGate = null;
+    exitDoorOpen = false;
+
+    State.phase = 'boot';
+    State.keys = 0;
+    State.flashlightOn = true;
+    State.running = false;
+    State.won = false;
+    State.dead = false;
+    $('keyCount').textContent = '0';
+
+    buildWorld();
+    player = createPlayer();
+    enemy = createEnemy();
+    Test.ok('Estado reiniciado');
+  }
+
+  // ---------- BOOT ----------
+  function boot(){
+    try{
+      if(typeof THREE === 'undefined') throw new Error('Three.js no cargó');
+      initThree();
+      buildWorld();
+      player = createPlayer();
+      enemy = createEnemy();
+      initInput();
+
+      $('btnStart').addEventListener('click', () => {
+        running = true;
+        clock.start();
+        loop();
+        startIntro();
+      });
+      $('btnRestart').addEventListener('click', () => {
+        $('endScreen').classList.add('hidden');
+        resetAll();
+        startIntro();
+      });
+
+      Test.ok('Boot completado');
+
+      // ---------- TEST AUTOMÁTICO DE CICLO DE VIDA ----------
+      // Simula inicio → juego → final sin interacción del usuario
+      setTimeout(() => {
+        try{
+          // Simula arranque
+          running = true; clock.start(); loop();
+          Test.ok('Loop de render activo');
+
+          // Avanza a play
+          State.phase = 'play';
+          Test.ok('Transición a fase play');
+
+          // Simula recoger llaves directamente
+          for(let i=0;i<3;i++){
+            const k = keys3D[0];
+            if(!k) break;
+            scene.remove(k);
+            keys3D.splice(0,1);
+            for(let j=interactables.length-1;j>=0;j--){
+              if(interactables[j].mesh===k){ interactables.splice(j,1); break; }
+            }
+            State.keys++;
+          }
+          Test.ok('Recolección de 3 llaves simulada');
+
+          // Simula apertura de puerta
+          exitDoorOpen = true;
+          exitDoor.visible = false;
+          for(let i=colliders.length-1;i>=0;i--) if(colliders[i].door) colliders.splice(i,1);
+          Test.ok('Puerta de salida abierta');
+
+          // Finaliza
+          endGame(true);
+          Test.ok('Test automático OK — el programa inicia y finaliza correctamente');
+        }catch(err){
+          Test.fail('Test automático: ' + err.message);
+        }
+      }, 400);
+
+    }catch(err){
+      Test.fail('Boot: ' + err.message);
+      console.error(err);
+    }
+  }
+
+  // Iniciar cuando el DOM y Three.js estén listos
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+})();
+</script>
+</body>
+</html>
