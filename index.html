@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>La Última Clase — En Mantenimiento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06080d;
+  --red:#9b1a1a;
+  --red2:#c0392b;
+  --red3:#e74c3c;
+  --cream:#cfc7be;
+  --dim:#2e2a26;
+  --light:#ede5d8;
+  --gold:#c8970a;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);overflow-x:hidden;cursor:none}
+body{font-family:'Inter',sans-serif}
+
+/* ── CURSOR LINTERNA ── */
+#torch{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(circle 180px at 50% 50%,transparent 0%,rgba(6,8,13,.85) 55%,rgba(6,8,13,.98) 100%);
+}
+/* en móvil no hay cursor, quitamos el efecto */
+@media(hover:none){#torch{display:none}body{cursor:auto}}
+
+/* ── RUIDO ── */
+#noise{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;opacity:.055}
+
+/* ── VIGNETTE FIJA ── */
+#vig{
+  position:fixed;inset:0;pointer-events:none;z-index:2;
+  background:radial-gradient(ellipse 100% 100% at 50% 50%,transparent 40%,rgba(0,0,0,.7) 100%);
+}
+
+/* ── LÍNEAS DE ESCÁNER ── */
+#scan{
+  position:fixed;inset:0;pointer-events:none;z-index:2;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);
+  animation:scanMove 8s linear infinite;
+}
+@keyframes scanMove{0%{background-position:0 0}100%{background-position:0 100px}}
+
+/* ── FOCOS COLGANTES ── */
+#lights{position:fixed;top:0;left:0;width:100%;pointer-events:none;z-index:3;height:220px}
+.light-unit{position:absolute;top:0;display:flex;flex-direction:column;align-items:center}
+.lw{width:2px;background:linear-gradient(to bottom,#111,#2a2a2a);transform-origin:top center}
+.lb{border-radius:50% 50% 40% 40%;position:relative}
+.lb::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:10px;height:8px;background:#1a1a1a;border-radius:0 0 3px 3px}
+.lc{border-left:solid transparent;border-right:solid transparent;border-top:0 solid transparent;margin-top:-1px}
+@keyframes flk1{0%,100%{opacity:1}7%{opacity:.3}8%{opacity:.9}51%{opacity:.4}52%{opacity:1}80%{opacity:.85}81%{opacity:.45}82%{opacity:1}}
+@keyframes flk2{0%,100%{opacity:.9}15%{opacity:.4}16%{opacity:.85}60%{opacity:.5}61%{opacity:.9}}
+@keyframes flk3{0%,100%{opacity:1}30%{opacity:.6}31%{opacity:1}70%{opacity:.3}71%{opacity:1}}
+
+/* ── ESCENA PRINCIPAL ── */
+#scene{
+  position:relative;z-index:4;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;
+  padding:140px 16px 60px;
+  gap:0;
+}
+
+/* ── TÍTULO ── */
+.gtitle{
+  font-family:'Special Elite',cursive;
+  font-size:clamp(2.2rem,9vw,5rem);
+  color:var(--light);
+  text-align:center;line-height:1;
+  text-shadow:0 0 60px rgba(180,120,60,.2),0 2px 8px rgba(0,0,0,.9);
+  letter-spacing:.03em;
+  animation:titlePulse 6s ease-in-out infinite;
+}
+@keyframes titlePulse{0%,100%{text-shadow:0 0 60px rgba(180,120,60,.2),0 2px 8px rgba(0,0,0,.9)}50%{text-shadow:0 0 80px rgba(200,140,40,.35),0 2px 8px rgba(0,0,0,.9)}}
+.gsubtitle{
+  font-family:'Special Elite',cursive;
+  font-size:clamp(.7rem,2.5vw,1rem);
+  color:var(--red2);letter-spacing:.35em;
+  text-align:center;margin-top:6px;
+  animation:flk2 5s infinite;
+}
+
+/* ── CINTA PELIGRO ── */
+.tape{
+  width:min(500px,95vw);height:30px;margin:28px 0 0;
+  background:repeating-linear-gradient(-45deg,#f5c518 0,#f5c518 16px,#111 16px,#111 32px);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  opacity:.9;
+}
+.tape p{font-family:'Special Elite',cursive;font-size:10px;letter-spacing:.22em;color:#111;background:#f5c518;padding:2px 10px;white-space:nowrap}
+
+/* ── CARTEL MANTENIMIENTO ── */
+#sign{
+  width:min(440px,92vw);margin-top:22px;
+  border:1px solid #2a2520;
+  padding:28px 24px 22px;
+  background:rgba(10,8,6,.75);
+  backdrop-filter:blur(4px);
+  position:relative;
+}
+#sign::before,#sign::after,#sign .c3,#sign .c4{
+  content:'';position:absolute;width:9px;height:9px;border-radius:50%;
+  background:#141210;border:1px solid #2e2a26;
+}
+#sign::before{top:7px;left:7px}#sign::after{top:7px;right:7px}
+#sign .c3{bottom:7px;left:7px}#sign .c4{bottom:7px;right:7px}
+.sign-eye{font-family:'Special Elite',cursive;font-size:clamp(.55rem,1.8vw,.7rem);color:var(--red);letter-spacing:.3em;text-align:center;margin-bottom:10px;opacity:.75}
+.sign-h{font-family:'Special Elite',cursive;font-size:clamp(1.2rem,4.5vw,1.8rem);color:var(--cream);text-align:center;line-height:1.3}
+.sign-body{font-size:clamp(.7rem,2.2vw,.85rem);font-weight:300;color:#5a5450;text-align:center;margin-top:14px;line-height:1.75;letter-spacing:.01em}
+.sign-body em{color:#7a6a5a;font-style:italic}
+
+/* ── MENSAJES ROTATIVOS ── */
+#msg-wrap{margin-top:24px;min-height:3em;text-align:center;width:min(400px,90vw)}
+#msg{
+  font-family:'Special Elite',cursive;
+  font-size:clamp(.8rem,3vw,1rem);
+  color:#6a5a4a;line-height:1.5;
+  opacity:0;transition:opacity .6s;
+}
+#msg.show{opacity:1}
+
+/* ── BARRA DE CARGA ── */
+#loader{width:min(380px,88vw);margin-top:28px}
+#lbl{font-family:'Inter',sans-serif;font-size:10px;font-weight:500;color:#3a3530;letter-spacing:.18em;text-align:center;margin-bottom:9px}
+#track{width:100%;height:2px;background:#151210;position:relative}
+#fill{height:100%;width:0%;background:linear-gradient(90deg,var(--red),#d04020,var(--gold));transition:width .35s ease;position:relative}
+#fill::after{content:'';position:absolute;right:-1px;top:-4px;width:2px;height:10px;background:var(--gold);box-shadow:0 0 10px 3px rgba(200,151,10,.7)}
+#pct{font-family:'Special Elite',cursive;font-size:.85rem;color:#3a3530;text-align:center;margin-top:9px;min-height:1.4em}
+
+/* ── SEPARADOR ── */
+.sep{width:min(300px,80vw);height:1px;background:linear-gradient(90deg,transparent,var(--dim),transparent);margin:32px 0}
+
+/* ── VIDEO ── */
+#vid-wrap{
+  width:min(460px,94vw);
+  position:relative;overflow:hidden;
+  border:1px solid #1e1a16;
+  background:#000;
+}
+#vid-wrap video{width:100%;display:block;opacity:.7;filter:contrast(1.1) brightness(.85) saturate(.6)}
+#vid-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(6,8,13,.4) 0%,transparent 30%,transparent 70%,rgba(6,8,13,.8) 100%);
+  display:flex;align-items:flex-end;padding:14px 16px;
+}
+#vid-overlay p{font-family:'Special Elite',cursive;font-size:clamp(.65rem,2vw,.8rem);color:#6a5a4a;letter-spacing:.12em}
+.vid-scanline{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.12) 3px,rgba(0,0,0,.12) 4px);animation:scanMove 4s linear infinite}
+
+/* ── IMAGEN ── */
+#img-wrap{
+  width:min(460px,94vw);margin-top:0;
+  position:relative;overflow:hidden;
+  border:1px solid #1e1a16;
+}
+#img-wrap img{width:100%;display:block;filter:contrast(1.05) brightness(.75) saturate(.5) sepia(.2);opacity:.8}
+#img-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(6,8,13,.5),transparent 40%,transparent 60%,rgba(6,8,13,.7))}
+.img-caption{position:absolute;bottom:10px;left:0;right:0;text-align:center;z-index:2;font-family:'Special Elite',cursive;font-size:clamp(.6rem,1.8vw,.75rem);color:#5a4a3a;letter-spacing:.15em}
+
+/* ── INFORMACIÓN DE CONTACTO ── */
+#contact{
+  width:min(440px,92vw);
+  border:1px solid var(--red);
+  padding:22px 20px;
+  background:rgba(90,10,10,.12);
+  position:relative;
+  margin-top:0;
+}
+#contact::before{content:'⚠';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--bg);padding:0 8px;color:var(--red);font-size:1rem}
+.contact-title{font-family:'Special Elite',cursive;font-size:clamp(.8rem,3vw,1rem);color:var(--red2);letter-spacing:.18em;text-align:center;margin-bottom:14px}
+.contact-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
+.contact-row:last-child{margin-bottom:0}
+.contact-icon{font-size:1.1rem;opacity:.7}
+.contact-text{font-size:clamp(.75rem,2.5vw,.9rem);font-weight:300;color:#8a7a6a;letter-spacing:.05em}
+.contact-text a{color:var(--cream);text-decoration:none;font-weight:500;border-bottom:1px solid var(--dim)}
+.contact-text a:hover{color:var(--red3)}
+
+/* ── FOOTER ── */
+#foot{
+  margin-top:40px;text-align:center;padding-bottom:max(20px,env(safe-area-inset-bottom));
+  font-size:11px;font-weight:300;color:#2a2520;letter-spacing:.1em;
+}
+#foot a{color:#3a3028;text-decoration:none}
+
+/* ── BOTÓN AUDIO ── */
+#abtn{
+  position:fixed;bottom:max(16px,env(safe-area-inset-bottom));right:16px;z-index:20;
+  width:42px;height:42px;border-radius:50%;border:1px solid var(--dim);
+  background:rgba(14,10,8,.85);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color .2s,transform .15s;
+}
+#abtn:active{transform:scale(.92)}
+#abtn svg{width:18px;height:18px;fill:var(--cream);opacity:.55}
+
+/* ── PARTÍCULAS FLOTANTES ── */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+.pt{position:absolute;border-radius:50%;animation:ptFloat linear infinite;opacity:0}
+@keyframes ptFloat{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:.4}90%{opacity:.2}100%{transform:translateY(-10vh) translateX(var(--dx));opacity:0}}
+
+/* ── GLITCH EN TÍTULO ── */
+@keyframes glitch{
+  0%,100%{clip-path:none;transform:none}
+  92%{clip-path:none;transform:none}
+  93%{clip-path:polygon(0 20%,100% 20%,100% 25%,0 25%);transform:translateX(-4px)}
+  94%{clip-path:polygon(0 60%,100% 60%,100% 65%,0 65%);transform:translateX(4px)}
+  95%{clip-path:polygon(0 40%,100% 40%,100% 42%,0 42%);transform:translateX(-2px)}
+  96%{clip-path:none;transform:none}
+}
+.gtitle{animation:titlePulse 6s ease-in-out infinite,glitch 7s infinite}
+</style>
+</head>
+<body>
+
+<canvas id="noise"></canvas>
+<div id="torch"></div>
+<div id="vig"></div>
+<div id="scan"></div>
+<div id="particles"></div>
+
+<!-- FOCOS -->
+<div id="lights"></div>
+
+<div id="scene">
+
+  <p class="gsubtitle">— UN JUEGO DE TERROR —</p>
+  <h1 class="gtitle">La Última Clase</h1>
+
+  <div class="tape"><p>⚠ &nbsp; ZONA RESTRINGIDA &nbsp; ⚠ &nbsp; ACCESO DENEGADO &nbsp; ⚠ &nbsp; ZONA RESTRINGIDA &nbsp; ⚠</p></div>
+
+  <div id="sign">
+    <div class="c3"></div><div class="c4"></div>
+    <div class="sign-eye">AVISO OFICIAL</div>
+    <div class="sign-h">🔧 Juego en Mantenimiento 🔧</div>
+    <div class="sign-body">
+      Estamos ajustando algunas cosas en las sombras.<br>
+      Los pasillos están siendo revisados.<br>
+      Las llaves han sido reubicadas.<br>
+      <em>Algo sigue moviéndose ahí adentro…</em><br><br>
+      Volveremos pronto. No tardaremos.<br>
+      <em>O eso esperamos.</em>
+    </div>
+  </div>
+
+  <!-- MENSAJES ROTATIVOS -->
+  <div id="msg-wrap"><p id="msg"></p></div>
+
+  <!-- BARRA DE CARGA -->
+  <div id="loader">
+    <div id="lbl">CARGANDO RECUERDOS</div>
+    <div id="track"><div id="fill"></div></div>
+    <div id="pct">—</div>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- VIDEO -->
+  <div id="vid-wrap">
+    <video autoplay muted loop playsinline preload="auto"
+      src="video/video_final_1_muerte.mp4"
+      onerror="this.parentElement.style.display='none'">
+    </video>
+    <div class="vid-scanline"></div>
+    <div id="vid-overlay"><p>REGISTRO — INCIDENTE FINAL</p></div>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- IMAGEN -->
+  <div id="img-wrap">
+    <img src="cuadros/cuadro1.jpg" alt="Vista del juego"
+      onerror="this.parentElement.style.display='none'">
+    <span class="img-caption">DOCUMENTACIÓN — LA ÚLTIMA CLASE</span>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- CONTACTO -->
+  <div id="contact">
+    <div class="contact-title">MÁS INFORMACIÓN</div>
+    <div class="contact-row">
+      <span class="contact-icon">📞</span>
+      <span class="contact-text"><a href="tel:+522483308722">+52 248 330 8722</a></span>
+    </div>
+    <div class="contact-row">
+      <span class="contact-icon">💬</span>
+      <span class="contact-text">Contáctanos por WhatsApp o llamada</span>
+    </div>
+    <div class="contact-row">
+      <span class="contact-icon">🌐</span>
+      <span class="contact-text"><a href="https://abrahamhr2009.github.io/la-ultima-clase/" target="_blank">abrahamhr2009.github.io/la-ultima-clase</a></span>
+    </div>
+  </div>
+
+  <div id="foot">
+    © 2026 &nbsp;·&nbsp; La Última Clase &nbsp;·&nbsp;
+    <a href="https://abrahamhr2009.github.io/la-ultima-clase/">Ir al juego</a>
+  </div>
+
+</div><!-- /scene -->
+
+<button id="abtn" aria-label="Música">
+  <svg id="ion" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+  <svg id="ioff" viewBox="0 0 24 24" style="display:none"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3z"/></svg>
+</button>
+
+<script>
+// ── RUIDO ──
+const nc=document.getElementById('noise');
+nc.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;opacity:.05';
+nc.width=200;nc.height=200;
+const nx=nc.getContext('2d');
+function dn(){const i=nx.createImageData(200,200);for(let j=0;j<i.data.length;j+=4){const v=Math.random()*255|0;i.data[j]=i.data[j+1]=i.data[j+2]=v;i.data[j+3]=255}nx.putImageData(i,0,0)}
+setInterval(dn,80);dn();
+
+// ── LINTERNA ──
+const torch=document.getElementById('torch');
+document.addEventListener('mousemove',e=>{
+  torch.style.background=`radial-gradient(circle 180px at ${e.clientX}px ${e.clientY}px,transparent 0%,rgba(6,8,13,.85) 55%,rgba(6,8,13,.98) 100%)`;
+});
+
+// ── FOCOS COLGANTES ──
+const lightsEl=document.getElementById('lights');
+const lData=[
+  {left:'15%',wh:70,bw:22,bh:30,vol:200,vol2:200,anim:'flk1',dur:'4.2s',cone:100,coneH:220},
+  {left:'50%',wh:55,bw:18,bh:24,vol:160,vol2:160,anim:'flk3',dur:'5.8s',cone:80,coneH:180},
+  {left:'85%',wh:65,bw:20,bh:28,vol:180,vol2:180,anim:'flk2',dur:'3.5s',cone:90,coneH:200},
+];
+lData.forEach(d=>{
+  const u=document.createElement('div');u.className='light-unit';
+  u.style.left=d.left;
+  const glow=`radial-gradient(ellipse at 50% 100%,rgba(240,200,60,.22) 0%,rgba(240,180,40,.08) 50%,transparent 70%)`;
+  u.innerHTML=`
+    <div class="lw" style="height:${d.wh}px;animation:${d.anim} ${d.dur} infinite"></div>
+    <div class="lb" style="width:${d.bw}px;height:${d.bh}px;background:radial-gradient(ellipse at 50% 40%,#fff9e0,#f5d060 40%,#c8880a 80%,#5a3800);box-shadow:0 0 30px 14px rgba(240,200,60,.18),0 0 90px 40px rgba(240,180,40,.07);animation:${d.anim} ${d.dur} infinite"></div>
+    <div class="lc" style="border-left:${d.cone}px solid transparent;border-right:${d.cone}px solid transparent;border-bottom:${d.coneH}px solid rgba(240,200,60,.03);animation:${d.anim} ${d.dur} infinite"></div>`;
+  lightsEl.appendChild(u);
+  // swing
+  let angle=0,vel=(Math.random()-.5)*.2;
+  const wire=u.querySelector('.lw');
+  const bulb=u.querySelector('.lb');
+  function swing(){
+    vel+=(0-angle)*.003;vel*=.985;
+    angle+=vel+(Math.sin(Date.now()*.00035+Math.random()*.1)*.25);
+    wire.style.transform=`rotate(${angle}deg)`;
+    bulb.style.transform=`rotate(${-angle*.4}deg)`;
+    requestAnimationFrame(swing);
+  }
+  swing();
+});
+
+// ── PARTÍCULAS ──
+const ps=document.getElementById('particles');
+for(let i=0;i<18;i++){
+  const p=document.createElement('div');p.className='pt';
+  const sz=(Math.random()*2+1).toFixed(1);
+  const dur=(Math.random()*12+8).toFixed(1);
+  const delay=-(Math.random()*12).toFixed(1);
+  const dx=((Math.random()*80-40)).toFixed(0);
+  p.style.cssText=`left:${Math.random()*100}%;width:${sz}px;height:${sz}px;background:rgba(${Math.random()>0.5?'180,100,40':'140,20,20'},.5);animation-duration:${dur}s;animation-delay:${delay}s;--dx:${dx}px`;
+  ps.appendChild(p);
+}
+
+// ── MENSAJES ROTATIVOS ──
+const msgs=[
+  '"No apagues la linterna."',
+  '"Escuché pasos en el tercer piso."',
+  '"La puerta del baño estaba abierta… sola."',
+  '"Alguien escribió algo en el pizarrón."',
+  '"No éramos los únicos ahí."',
+  '"Las llaves desaparecieron."',
+  '"El conserje no llegó esa noche."',
+  '"Regresa cuando estemos listos.\n¿O no regreses?"',
+  '"La última clase nunca terminó."',
+  '"Algo sigue esperando adentro."',
+  '"¿Por qué sigues aquí?"',
+  '"Cierra la puerta al salir."',
+];
+const msgEl=document.getElementById('msg');
+let mi=0;
+function showMsg(){
+  msgEl.classList.remove('show');
+  setTimeout(()=>{
+    msgEl.textContent=msgs[mi%msgs.length];mi++;
+    msgEl.classList.add('show');
+    setTimeout(showMsg,3800);
+  },600);
+}
+setTimeout(showMsg,1200);
+
+// ── BARRA DE CARGA ──
+const fill=document.getElementById('fill');
+const pct=document.getElementById('pct');
+const loadMsgs=[
+  'Encendiendo luces…',
+  'Revisando pasillos…',
+  'Contando sillas vacías…',
+  'Verificando salidas…',
+  'Escuchando pasos…',
+  'Algo se está moviendo…',
+  'Ajustando sombras…',
+  'Probando puertas…',
+  'Cargando recuerdos…',
+  'Revisando taquillas…',
+  'Casi listo… o no.',
+  'Esperando…',
+];
+let prog=0,lmi=0;
+function tick(){
+  prog=Math.min(100,prog+(Math.random()*2.5+.4));
+  fill.style.width=prog+'%';
+  const idx=Math.floor((prog/100)*loadMsgs.length);
+  if(idx!==lmi&&idx<loadMsgs.length){lmi=idx;pct.textContent=loadMsgs[lmi]}
+  if(prog<100)setTimeout(tick,200+Math.random()*350);
+  else pct.textContent='Esperando tu regreso…';
+}
+tick();
+
+// ── AUDIO AMBIENT ──
+let actx=null,mgain=null,muted=false;
+function initAudio(){
+  if(actx)return;
+  // Intentar cargar musica_fondo.mp3 del juego
+  const tryAudio=new Audio('audio/musica_fondo.mp3');
+  tryAudio.loop=true;tryAudio.volume=.18;
+  const p=tryAudio.play();
+  if(p)p.then(()=>{
+    window._bgAudio=tryAudio;
+  }).catch(()=>synthAudio());
+  else synthAudio();
+}
+function synthAudio(){
+  actx=new(window.AudioContext||window.webkitAudioContext)();
+  mgain=actx.createGain();mgain.gain.value=.25;mgain.connect(actx.destination);
+  [[55,.16],[55.4,.1,10],[27.5,.2]].forEach(([f,v,d=0])=>{
+    const o=actx.createOscillator(),g=actx.createGain(),fi=actx.createBiquadFilter();
+    o.type='sawtooth';o.frequency.value=f;o.detune.value=d;
+    fi.type='lowpass';fi.frequency.value=380;
+    g.gain.value=v;o.connect(fi);fi.connect(g);g.connect(mgain);o.start();
+  });
+  function pulse(){
+    const o=actx.createOscillator(),g=actx.createGain();
+    o.type='sine';o.frequency.value=108+Math.random()*8;
+    g.gain.setValueAtTime(0,actx.currentTime);
+    g.gain.linearRampToValueAtTime(.07,actx.currentTime+.4);
+    g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+3);
+    o.connect(g);g.connect(mgain);o.start();o.stop(actx.currentTime+3);
+    setTimeout(pulse,2500+Math.random()*5000);
+  }
+  setTimeout(pulse,800);
+}
+const abtn=document.getElementById('abtn');
+abtn.addEventListener('click',()=>{
+  if(!actx&&!window._bgAudio)initAudio();
+  muted=!muted;
+  if(window._bgAudio)window._bgAudio.volume=muted?0:.18;
+  if(mgain)mgain.gain.setTargetAtTime(muted?0:.25,actx.currentTime,.2);
+  document.getElementById('ion').style.display=muted?'none':'';
+  document.getElementById('ioff').style.display=muted?'':'none';
+});
+document.addEventListener('click',()=>{if(!actx&&!window._bgAudio)initAudio()},{once:true});
+document.addEventListener('touchstart',()=>{if(!actx&&!window._bgAudio)initAudio()},{once:true,passive:true});
+</script>
+</body>
+</html>
